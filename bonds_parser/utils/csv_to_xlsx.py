@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from openpyxl import Workbook
+from openpyxl.styles import PatternFill
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,29 @@ def convert_csv_to_xlsx(
             for row_idx, row in enumerate(reader):
                 for col_idx, value in enumerate(row):
                     ws.cell(row=row_idx + 1, column=col_idx + 1, value=value)
+
+        # Определяем индекс колонки "Рейтинг" по заголовку (первая строка)
+        rating_col_index = None
+        first_row = [cell.value for cell in ws[1]]
+        for idx, header in enumerate(first_row, start=1):
+            if header == "Рейтинг":
+                rating_col_index = idx
+                break
+        
+        # Если не нашли по заголовку, используем фиксированный индекс 8 (колонка H, 7-я по счёту с 0)
+        if rating_col_index is None:
+            rating_col_index = 8  # Колонка H соответствует индексу 8 (A=1, B=2, ... H=8)
+            logger.warning("Заголовок 'Рейтинг' не найден, используется фиксированная колонка 8")
+
+        # Создаём заливку бледно-зелёного цвета
+        green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+
+        # Применяем заливку к строкам, где рейтинг равен "AAA"
+        for row in ws.iter_rows(min_row=2):  # Пропускаем заголовок
+            rating_cell = row[rating_col_index - 1]  # индекс с 1
+            if rating_cell.value == "AAA":
+                for cell in row:
+                    cell.fill = green_fill
 
         wb.save(xlsx_path)
         logger.info(f"XLSX файл успешно создан: {xlsx_path}")
